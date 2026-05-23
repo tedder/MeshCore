@@ -885,6 +885,13 @@ void EnvironmentSensorManager::stop_gps() {
 }
 #endif // ENV_INCLUDE_GPS
 
+static double blurCoord(long microdeg, uint8_t digits) {
+  if (digits == 0 || digits > 6) return microdeg / 1000000.0;
+  long q = 1;
+  for (uint8_t i = 0; i < 6 - digits; i++) q *= 10;
+  return (double)((microdeg / q) * q) / 1000000.0;
+}
+
 #if ENV_INCLUDE_GPS || defined(ENV_INCLUDE_BME680_BSEC)
 void EnvironmentSensorManager::loop() {
 
@@ -898,17 +905,15 @@ void EnvironmentSensorManager::loop() {
     if(gps_active){
     #ifdef RAK_WISBLOCK_GPS
     if ((i2cGPSFlag || serialGPSFlag) && _location->isValid()) {
-      node_lat = ((double)_location->getLatitude())/1000000.;
-      node_lon = ((double)_location->getLongitude())/1000000.;
-      MESH_DEBUG_PRINTLN("lat %f lon %f", node_lat, node_lon);
+      node_lat = blurCoord(_location->getLatitude(), gps_blur_digits);
+      node_lon = blurCoord(_location->getLongitude(), gps_blur_digits);
       node_altitude = ((double)_location->getAltitude()) / 1000.0;
       MESH_DEBUG_PRINTLN("lat %f lon %f alt %f", node_lat, node_lon, node_altitude);
     }
     #else
     if (_location->isValid()) {
-      node_lat = ((double)_location->getLatitude())/1000000.;
-      node_lon = ((double)_location->getLongitude())/1000000.;
-      MESH_DEBUG_PRINTLN("lat %f lon %f", node_lat, node_lon);
+      node_lat = blurCoord(_location->getLatitude(), gps_blur_digits);
+      node_lon = blurCoord(_location->getLongitude(), gps_blur_digits);
       node_altitude = ((double)_location->getAltitude()) / 1000.0;
       MESH_DEBUG_PRINTLN("lat %f lon %f alt %f", node_lat, node_lon, node_altitude);
     }
