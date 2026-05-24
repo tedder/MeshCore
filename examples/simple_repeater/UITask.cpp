@@ -94,6 +94,14 @@ void UITask::renderCurrScreen() {
     _display->setCursor(0, 30);
     sprintf(tmp, "BW: %03.2f CR: %d", _node_prefs->bw, _node_prefs->cr);
     _display->print(tmp);
+
+    // sensor summary
+    if (_sensors) {
+      _display->setCursor(0, 40);
+      _display->setColor(DisplayDriver::LIGHT);
+      _sensors->getSensorSummary(tmp, sizeof(tmp));
+      _display->print(tmp);
+    }
   }
 }
 

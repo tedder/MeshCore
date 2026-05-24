@@ -10,6 +10,7 @@ protected:
 
   bool AHTX0_initialized = false;
   bool BME280_initialized = false;
+  uint8_t BME280_address = 0;
   bool BMP280_initialized = false;
   bool INA3221_initialized = false;
   bool INA219_initialized = false;
@@ -56,4 +57,5 @@ public:
   const char* getSettingName(int i) const override;
   const char* getSettingValue(int i) const override;
   bool setSettingValue(const char* name, const char* value) override;
+  void getSensorSummary(char* buf, size_t len) const override;
 };

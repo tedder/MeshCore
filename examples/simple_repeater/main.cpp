@@ -97,6 +97,7 @@ void setup() {
 
 #ifdef DISPLAY_CLASS
   ui_task.begin(the_mesh.getNodePrefs(), FIRMWARE_BUILD_DATE, FIRMWARE_VERSION);
+  ui_task.setSensors(&sensors);
   #if ENV_INCLUDE_GPS
   ui_task.setGPS(sensors.getLocationProvider());
   #endif
