@@ -50,4 +50,5 @@ public:
   const char* getSettingName(int i) const override;
   const char* getSettingValue(int i) const override;
   bool setSettingValue(const char* name, const char* value) override;
+  void getSensorSummary(char* buf, size_t len) const override;
 };

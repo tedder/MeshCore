@@ -732,6 +732,63 @@ bool EnvironmentSensorManager::setSettingValue(const char* name, const char* val
   return false;  // not supported
 }
 
+void EnvironmentSensorManager::getSensorSummary(char* buf, size_t len) const {
+  buf[0] = 0;
+  size_t pos = 0;
+  #define APPEND_SENSOR(name, addr) do { \
+    int n = snprintf(buf + pos, len - pos, "%s%s 0x%02x", pos ? " " : "", name, addr); \
+    if (n > 0) pos += (size_t)n; \
+  } while(0)
+
+  #if ENV_INCLUDE_BME280
+  if (BME280_initialized) APPEND_SENSOR("bme280", BME280_address);
+  #endif
+  #if ENV_INCLUDE_BMP280
+  if (BMP280_initialized) APPEND_SENSOR("bmp280", TELEM_BMP280_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_BME680
+  if (BME680_initialized) APPEND_SENSOR("bme680", TELEM_BME680_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_AHTX0
+  if (AHTX0_initialized) APPEND_SENSOR("aht", TELEM_AHTX_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_SHTC3
+  if (SHTC3_initialized) APPEND_SENSOR("shtc3", 0x70);
+  #endif
+  #if ENV_INCLUDE_SHT4X
+  if (SHT4X_initialized) APPEND_SENSOR("sht4x", TELEM_SHT4X_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_LPS22HB
+  if (LPS22HB_initialized) APPEND_SENSOR("lps22", 0x5c);
+  #endif
+  #if ENV_INCLUDE_INA3221
+  if (INA3221_initialized) APPEND_SENSOR("ina3221", TELEM_INA3221_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_INA219
+  if (INA219_initialized) APPEND_SENSOR("ina219", TELEM_INA219_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_INA260
+  if (INA260_initialized) APPEND_SENSOR("ina260", TELEM_INA260_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_INA226
+  if (INA226_initialized) APPEND_SENSOR("ina226", TELEM_INA226_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_MLX90614
+  if (MLX90614_initialized) APPEND_SENSOR("mlx90614", TELEM_MLX90614_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_VL53L0X
+  if (VL53L0X_initialized) APPEND_SENSOR("vl53l0x", TELEM_VL53L0X_ADDRESS);
+  #endif
+  #if ENV_INCLUDE_BMP085
+  if (BMP085_initialized) APPEND_SENSOR("bmp085", 0x77);
+  #endif
+  #if ENV_INCLUDE_RAK12035
+  if (RAK12035_initialized) APPEND_SENSOR("rak12035", TELEM_RAK12035_ADDRESS);
+  #endif
+
+  #undef APPEND_SENSOR
+}
+
 #if ENV_INCLUDE_GPS
 void EnvironmentSensorManager::initBasicGPS() {
 
