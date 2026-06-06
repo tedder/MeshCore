@@ -9,6 +9,12 @@
 #define AUTO_OFF_MILLIS      20000  // 20 seconds
 #define BOOT_SCREEN_MILLIS   4000   // 4 seconds
 
+// 4x4 open-ring degree symbol (XBM, LSB-first per row)
+static const uint8_t degree_xbm[] PROGMEM = {0x06, 0x09, 0x09, 0x06};
+
+// 6x8 satellite dish symbol (XBM, LSB-first per row)
+static const uint8_t sat_xbm[] PROGMEM = {0x1E, 0x12, 0x3F, 0x3F, 0x3F, 0x3F, 0x12, 0x1E};
+
 // 'meshcore', 128x13px
 static const uint8_t meshcore_logo [] PROGMEM = {
     0x3c, 0x01, 0xe3, 0xff, 0xc7, 0xff, 0x8f, 0x03, 0x87, 0xfe, 0x1f, 0xfe, 0x1f, 0xfe, 0x1f, 0xfe, 
@@ -42,6 +48,20 @@ void UITask::begin(NodePrefs* node_prefs, const char* build_date, const char* fi
 
   // v1.2.3 (1 Jan 2025)
   sprintf(_version_info, "%s (%s)", version, build_date);
+}
+
+static void fmtCount(char* buf, uint32_t n) {
+  if (n < 1000) {
+    sprintf(buf, "%u", n);
+  } else if (n < 99500) {
+    sprintf(buf, "%uk", (n + 500) / 1000);
+  } else if (n < 950000) {
+    sprintf(buf, ".%um", (n + 50000) / 100000);
+  } else {
+    uint32_t m = (n + 500000) / 1000000;
+    if (m > 99) m = 99;
+    sprintf(buf, "%um", m);
+  }
 }
 
 void UITask::renderCurrScreen() {
@@ -79,36 +99,85 @@ void UITask::renderCurrScreen() {
     _display->setColor(DisplayDriver::GREEN);
     _display->print(_node_prefs->node_name);
 
+    // separator line below node name
+    _display->setColor(DisplayDriver::LIGHT);
+    _display->fillRect(0, 9, 128, 1);
+
+    if (millis() < _advert_until) {
+      // centered "flood" / "advert" in the area below the separator (y=11..63)
+      _display->setColor(DisplayDriver::LIGHT);
+      const char* line1 = "flood";
+      const char* line2 = "advert";
+      uint16_t w1 = _display->getTextWidth(line1);
+      uint16_t w2 = _display->getTextWidth(line2);
+      _display->setCursor((_display->width() - w1) / 2, 29);
+      _display->print(line1);
+      _display->setCursor((_display->width() - w2) / 2, 38);
+      _display->print(line2);
+    } else {
 #if ENV_INCLUDE_GPS
-    if (_gps && _gps->isEnabled()) {
-      _display->setCursor(0, 10);
-      _display->setColor(DisplayDriver::YELLOW);
-      if (_gps->isValid()) {
-        sprintf(tmp, "GPS: fix %ld sat", _gps->satellitesCount());
-      } else {
-        sprintf(tmp, "GPS: no fix %ld sat", _gps->satellitesCount());
+      if (_gps && _gps->isEnabled()) {
+        _display->setCursor(0, 11);
+        _display->setColor(DisplayDriver::YELLOW);
+        if (_gps->isValid())
+          sprintf(tmp, "GPS: fix %ld ", _gps->satellitesCount());
+        else
+          sprintf(tmp, "GPS: no fix %ld ", _gps->satellitesCount());
+        _display->print(tmp);
+        int cx = strlen(tmp) * 6;
+        _display->drawXbm(cx, 11, sat_xbm, 6, 8);
+        if (_gps->isValid() && _sensors && _sensors->gps_blur_digits > 0) {
+          sprintf(tmp, " fz:%d", _sensors->gps_blur_digits);
+          _display->setCursor(cx + 6, 11);
+          _display->print(tmp);
+        }
       }
-      _display->print(tmp);
-    }
 #endif
 
-    // freq / sf
-    _display->setCursor(0, 20);
-    _display->setColor(DisplayDriver::YELLOW);
-    sprintf(tmp, "FREQ: %06.3f SF%d", _node_prefs->freq, _node_prefs->sf);
-    _display->print(tmp);
-
-    // bw / cr
-    _display->setCursor(0, 30);
-    sprintf(tmp, "BW: %03.2f CR: %d", _node_prefs->bw, _node_prefs->cr);
-    _display->print(tmp);
-
-    // sensor summary
-    if (_sensors) {
-      _display->setCursor(0, 40);
-      _display->setColor(DisplayDriver::LIGHT);
-      _sensors->getSensorSummary(tmp, sizeof(tmp));
+      // freq / sf
+      _display->setCursor(0, 20);
+      _display->setColor(DisplayDriver::YELLOW);
+      sprintf(tmp, "FREQ: %06.3f SF%d", _node_prefs->freq, _node_prefs->sf);
       _display->print(tmp);
+
+      // bw / cr
+      _display->setCursor(0, 29);
+      sprintf(tmp, "BW: %03.2f CR: %d", _node_prefs->bw, _node_prefs->cr);
+      _display->print(tmp);
+
+      // temp / humidity
+      if (_sensors && _sensors->has_environment) {
+        char prefix[32];
+        sprintf(prefix, "bme280 0x%02X %d", _sensors->env_sensor_addr, (int)_sensors->node_temp_c);
+        _display->setCursor(0, 38);
+        _display->setColor(DisplayDriver::LIGHT);
+        _display->print(prefix);
+        int cx = strlen(prefix) * 6;
+        _display->drawXbm(cx + 1, 38, degree_xbm, 4, 4);
+        sprintf(tmp, "C %d%%", (int)_sensors->node_humidity);
+        _display->setCursor(cx + 6, 38);
+        _display->print(tmp);
+      }
+
+      // radio signal: rssi / snr / noise floor
+      if (_stats) {
+        _display->setCursor(0, 47);
+        _display->setColor(DisplayDriver::LIGHT);
+        sprintf(tmp, "rs:%-4d sn:%-3d f:%-4d",
+                _stats->last_rssi,
+                (int)(_stats->last_snr_x4 / 4),
+                _stats->noise_floor);
+        _display->print(tmp);
+
+        // packet counts: recv / sent / dups
+        _display->setCursor(0, 56);
+        char rx[4], tx[4], dp[4];
+        fmtCount(rx, _stats->n_recv);
+        fmtCount(tx, _stats->n_sent);
+        fmtCount(dp, _stats->n_dups);
+        sprintf(tmp, "rx:%s tx:%s dp:%s", rx, tx, dp);
+        _display->print(tmp);
+      }
     }
   }
 }
@@ -118,17 +187,28 @@ void UITask::loop() {
   if (millis() >= _next_read) {
     int btnState = digitalRead(PIN_USER_BTN);
     if (btnState != _prevBtnState) {
-      if (btnState == USER_BTN_PRESSED) {  // pressed?
-        if (_display->isOn()) {
-          // TODO: any action ?
+      if (btnState == USER_BTN_PRESSED) {  // falling edge
+        if (!_display->isOn()) _display->turnOn();
+        _auto_off = millis() + AUTO_OFF_MILLIS;
+        if (_press_count == 0) {
+          _press_count = 1;
+          _first_press_at = millis();
+        } else if ((unsigned long)(millis() - _first_press_at) <= 2000) {
+          _press_count = 0;
+          _advert_until = millis() + 5000;
+          _auto_off = millis() + AUTO_OFF_MILLIS;
+          if (_on_long_press) _on_long_press();
         } else {
-          _display->turnOn();
+          _press_count = 1;
+          _first_press_at = millis();
         }
-        _auto_off = millis() + AUTO_OFF_MILLIS;   // extend auto-off timer
       }
       _prevBtnState = btnState;
     }
-    _next_read = millis() + 200;  // 5 reads per second
+    if (_press_count == 1 && (unsigned long)(millis() - _first_press_at) > 2000) {
+      _press_count = 0;
+    }
+    _next_read = millis() + 50;  // 20 reads per second
   }
 #endif
 

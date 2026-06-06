@@ -473,6 +473,14 @@ void MyMesh::logRxRaw(float snr, float rssi, const uint8_t raw[], int len) {
 }
 
 void MyMesh::logRx(mesh::Packet *pkt, int len, float score) {
+#ifdef DISPLAY_CLASS
+  _ui_stats.last_rssi    = (int16_t)_radio->getLastRSSI();
+  _ui_stats.last_snr_x4  = (int16_t)(_radio->getLastSNR() * 4);
+  _ui_stats.noise_floor  = (int16_t)_radio->getNoiseFloor();
+  _ui_stats.n_recv       = radio_driver.getPacketsRecv();
+  _ui_stats.n_dups       = ((SimpleMeshTables*)getTables())->getNumDirectDups()
+                         + ((SimpleMeshTables*)getTables())->getNumFloodDups();
+#endif
 #ifdef WITH_BRIDGE
   if (_prefs.bridge_pkt_src == 1) {
     bridge.sendPacket(pkt);
@@ -499,6 +507,9 @@ void MyMesh::logRx(mesh::Packet *pkt, int len, float score) {
 }
 
 void MyMesh::logTx(mesh::Packet *pkt, int len) {
+#ifdef DISPLAY_CLASS
+  _ui_stats.n_sent = radio_driver.getPacketsSent();
+#endif
 #ifdef WITH_BRIDGE
   if (_prefs.bridge_pkt_src == 0) {
     bridge.sendPacket(pkt);
