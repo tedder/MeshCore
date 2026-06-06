@@ -17,6 +17,11 @@ public:
   uint32_t gps_fuzz_lat = 0;  // derived from first half of pub_key; deterministic offset within blur grid cell
   uint32_t gps_fuzz_lon = 0;  // derived from second half of pub_key
 
+  float node_temp_c = 0;
+  float node_humidity = 0;
+  bool has_environment = false;
+  uint8_t env_sensor_addr = 0;
+
   SensorManager() { node_lat = 0; node_lon = 0; node_altitude = 0; gps_blur_digits = 0; gps_fuzz_lat = 0; gps_fuzz_lon = 0; }
   virtual bool begin() { return false; }
   virtual bool querySensors(uint8_t requester_permissions, CayenneLPP& telemetry) { return false; }

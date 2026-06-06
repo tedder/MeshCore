@@ -35,6 +35,10 @@
 #include <helpers/RegionMap.h>
 #include "RateLimiter.h"
 
+#ifdef DISPLAY_CLASS
+#include "UITask.h"
+#endif
+
 #ifdef WITH_BRIDGE
 extern AbstractBridge* bridge;
 #endif
@@ -73,7 +77,7 @@ struct NeighbourInfo {
 #endif
 
 #ifndef FIRMWARE_VERSION
-  #define FIRMWARE_VERSION   "v1.15.1"
+  #define FIRMWARE_VERSION   "v1.15.11"
 #endif
 
 #define FIRMWARE_ROLE "repeater"
@@ -117,6 +121,9 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   RS232Bridge bridge;
 #elif defined(WITH_ESPNOW_BRIDGE)
   ESPNowBridge bridge;
+#endif
+#ifdef DISPLAY_CLASS
+  UIStats _ui_stats = {};
 #endif
 
   void putNeighbour(const mesh::Identity& id, uint32_t timestamp, float snr);
@@ -187,6 +194,9 @@ public:
   NodePrefs* getNodePrefs() {
     return &_prefs;
   }
+#ifdef DISPLAY_CLASS
+  UIStats* getUIStats() { return &_ui_stats; }
+#endif
 
   void savePrefs() override {
     _cli.savePrefs(_fs);

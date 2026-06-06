@@ -216,6 +216,7 @@ bool EnvironmentSensorManager::begin() {
                            Adafruit_BME280::STANDBY_MS_1000);
         BME280_initialized = true;
         BME280_address = addr;
+        env_sensor_addr = addr;
         break;
       }
     }
@@ -397,8 +398,11 @@ bool EnvironmentSensorManager::querySensors(uint8_t requester_permissions, Cayen
     #if ENV_INCLUDE_BME280
     if (BME280_initialized) {
       if (BME280.takeForcedMeasurement()) {  // trigger a fresh reading in forced mode
-        telemetry.addTemperature(TELEM_CHANNEL_SELF, BME280.readTemperature());
-        telemetry.addRelativeHumidity(TELEM_CHANNEL_SELF, BME280.readHumidity());
+        node_temp_c = BME280.readTemperature();
+        node_humidity = BME280.readHumidity();
+        has_environment = true;
+        telemetry.addTemperature(TELEM_CHANNEL_SELF, node_temp_c);
+        telemetry.addRelativeHumidity(TELEM_CHANNEL_SELF, node_humidity);
         telemetry.addBarometricPressure(TELEM_CHANNEL_SELF, BME280.readPressure()/100);
         telemetry.addAltitude(TELEM_CHANNEL_SELF, BME280.readAltitude(TELEM_BME280_SEALEVELPRESSURE_HPA));
       }
@@ -828,6 +832,18 @@ static double blurCoord(long microdeg, uint8_t digits, uint32_t fuzz) {
 
 void EnvironmentSensorManager::loop() {
   static long next_gps_update = 0;
+  static long next_env_update = 0;
+
+  #if ENV_INCLUDE_BME280
+  if (BME280_initialized && millis() > next_env_update) {
+    if (BME280.takeForcedMeasurement()) {
+      node_temp_c = BME280.readTemperature();
+      node_humidity = BME280.readHumidity();
+      has_environment = true;
+    }
+    next_env_update = millis() + 60000;
+  }
+  #endif
 
   #if ENV_INCLUDE_GPS
   if (gps_active) {
